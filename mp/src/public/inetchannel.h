@@ -21,6 +21,14 @@ class	INetChannelInfo;
 typedef struct netpacket_s netpacket_t;
 typedef struct netadr_s	netadr_t;
 
+enum ConnectionStatus_t
+{
+	CONNECTION_STATE_DISCONNECTED = 0,
+	CONNECTION_STATE_CONNECTING,
+	CONNECTION_STATE_CONNECTION_FAILED,
+	CONNECTION_STATE_CONNECTED,
+};
+
 abstract_class INetChannel : public INetChannelInfo
 {
 public:
@@ -85,6 +93,36 @@ public:
 	virtual int		GetMaxRoutablePayloadSize() = 0;
 
 	virtual int		GetProtocolVersion() = 0;
+private:
+	int			ProcessPacketHeader( bf_read &buf );
+	bool		ProcessControlMessage( int cmd, bf_read &buf );
+	bool		ProcessMessages( bf_read &buf );
+
+	ConnectionStatus_t m_ConnectionState;
+
+// last send outgoing sequence number
+	int			m_nOutSequenceNr;
+	// last received incoming sequnec number
+	int			m_nInSequenceNr;
+	// last received acknowledge outgoing sequnce number
+	int			m_nOutSequenceNrAck;
+
+	// state of outgoing reliable data (0/1) flip flop used for loss detection
+	int			m_nOutReliableState;
+	// state of incoming reliable data
+	int			m_nInReliableState;
+
+	int			m_nChokedPackets;	//number of choked packets
+	int			m_PacketDrop;
+
+// Reliable data buffer, send wich each packet (or put in waiting list)
+	bf_write	m_StreamReliable;
+	byte		m_ReliableDataBuffer[8 * 1024];	// In SP, we don't need much reliable buffer, so save the memory (this is mostly for xbox).
+	CUtlVector<byte> m_ReliableDataBufferMP;
+
+	// unreliable message buffer, cleared wich each packet
+	bf_write	m_StreamUnreliable;
+	byte		m_UnreliableDataBuffer[1400];
 };
 
 
